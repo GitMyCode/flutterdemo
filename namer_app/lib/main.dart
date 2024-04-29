@@ -30,19 +30,25 @@ class MyApp extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
+  var history = <WordPair>[];
+  GlobalKey? historyListKey;
 
   void getNext() {
+    history.insert(0, current);
+    var animatedList = historyListKey?.currentState as AnimatedListState?;
+    animatedList?.insertItem(0);
     current = WordPair.random();
     notifyListeners();
   }
 
   var favorites = <WordPair>[];
 
-  void toggleFavorite() {
-    if (favorites.contains(current)) {
-      favorites.remove(current);
+  void toggleFavorite([WordPair? pair]) {
+    pair = pair ?? current;
+    if (favorites.contains(pair)) {
+      favorites.remove(pair);
     } else {
-      favorites.add(current);
+      favorites.add(pair);
     }
 
     notifyListeners();
@@ -158,14 +164,17 @@ class GeneratorPage extends StatelessWidget {
       body: Center(
         child: SizedBox(
           width: 450,
-          height: 300,
           child: Padding(
             padding: const EdgeInsets.all(40),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('A random  idea:'),
+                Expanded(
+                  flex: 3,
+                  child: HistoricalListView(),
+                ),
                 BigCard(wordPair: wordPair),
+                SizedBox(height: 10),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -178,7 +187,7 @@ class GeneratorPage extends StatelessWidget {
                       icon: Icon(favoriteIcon),
                       label: Text('Like'),
                     ),
-                    SizedBox(width: 10),
+                    SizedBox(width: 20),
                     ElevatedButton(
                       onPressed: () {
                         appState.getNext();
@@ -186,12 +195,65 @@ class GeneratorPage extends StatelessWidget {
                       child: Text('Next'),
                     ),
                   ],
+                  
                 ),
+                    Spacer(flex: 2),
+
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class HistoricalListView extends StatefulWidget {
+  static const Gradient _maskingGradient = LinearGradient(
+    // This gradient goes from fully transparent to fully opaque black...
+    colors: [Colors.transparent, Colors.black],
+    // ... from the top (transparent) to half (0.5) of the way to the bottom.
+    stops: [0.0, 0.5],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  @override
+  State<HistoricalListView> createState() => _HistoricalListViewState();
+}
+
+class _HistoricalListViewState extends State<HistoricalListView> {
+  final _key = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<MyAppState>();
+    appState.historyListKey = _key;
+
+    return ShaderMask(
+      shaderCallback: (bounds) => HistoricalListView._maskingGradient.createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: AnimatedList(
+        key: _key,
+        reverse: true,
+        padding: EdgeInsets.only(top: 100),
+        initialItemCount: appState.history.length,
+        itemBuilder: (context, index, animation) {
+          final wordPair = appState.history[index];
+          return SizeTransition(
+            sizeFactor: Tween<double>(begin: 0, end: 1).animate(animation),
+            child: Center(
+              child: TextButton.icon(
+                onPressed: (){
+                  appState.toggleFavorite(wordPair);
+      
+                }, 
+                icon: appState.favorites.contains(wordPair)
+                ? Icon(Icons.favorite, size: 12)
+                : SizedBox(),
+                label: Text(wordPair.asLowerCase)),)
+            );
+        }),
     );
   }
 }

@@ -34,8 +34,18 @@ class DisplayFavoriteGrid extends StatelessWidget {
       children: [
         for(var pair in favorites)
           Container(
-            child: Center(
-              child: Text(pair.asCamelCase),
+            child: ListTile(
+              leading: IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () {
+                  var appState = context.read<MyAppState>();
+                  appState.toggleFavorite(pair);
+                },
+              ),
+              title: Text(
+                pair.asCamelCase,
+                style: Theme.of(context).textTheme.labelLarge,
+              )
             ))
       ],
     );
